@@ -24,7 +24,7 @@ public class Parser {
             int count_regolare = 0;
             while (p_regolare.matcher(s).find()) { count_regolare++; }
             int count_cifre = 0;
-            while (p_cifre.matcher(s).find()) { count_cifre++; }
+            //while (p_cifre.matcher(s).find()) { count_cifre++; }
 
             if (count_regolare > 0 && count_cifre == 0) {
                 // Regolare ?
