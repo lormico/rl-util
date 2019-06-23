@@ -27,21 +27,9 @@ public class ParsingUnitTest {
 
     @Before
     public void setUp() {
-        partenzeRaw = null;
-        expectedPsp = null;
-        expectedColombo = null;
-    }
-
-    @Test
-    public void getPage() {
-        Document doc = null;
-        try {
-            doc = Jsoup.connect("https://www.atac.roma.it/function/pg_news.asp?act=3&r=16616&p=159").get();
-        } catch (Exception e) {
-
-        }
-        String title = doc.title();
-        Elements rows = doc.select("tr");
+        partenzeRaw = "";
+        expectedPsp = new ArrayList<>();
+        expectedColombo = new ArrayList<>();
     }
 
     @Test

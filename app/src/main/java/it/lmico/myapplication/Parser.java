@@ -1,5 +1,6 @@
 package it.lmico.myapplication;
 
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -10,11 +11,11 @@ import java.util.regex.Pattern;
 
 public class Parser {
 
-    public static Map<String, ArrayList<Date>> parsePartenze (String s) {
+    public static Map<String, ArrayList<LocalTime>> parsePartenze (String s) {
 
-        Map<String, ArrayList<Date>> result = new HashMap<>();
-        result.put("Colombo", null);
-        result.put("PSP", null);
+        Map<String, ArrayList<LocalTime>> result = new HashMap<>();
+        result.put("Colombo", new ArrayList<LocalTime>());
+        result.put("PSP", new ArrayList<LocalTime>());
 
         Pattern p_regolare = Pattern.compile("regolare", Pattern.CASE_INSENSITIVE);
         Pattern p_cifre = Pattern.compile("[0-9]+");
@@ -22,9 +23,12 @@ public class Parser {
         try {
 
             int count_regolare = 0;
-            while (p_regolare.matcher(s).find()) { count_regolare++; }
+            Matcher m_regolare = p_regolare.matcher(s);
+            while (m_regolare.find()) { count_regolare++; }
+
             int count_cifre = 0;
-            //while (p_cifre.matcher(s).find()) { count_cifre++; }
+            Matcher m_cifre = p_cifre.matcher(s);
+            while (m_cifre.find()) { count_cifre++; }
 
             if (count_regolare > 0 && count_cifre == 0) {
                 // Regolare ?
@@ -32,11 +36,13 @@ public class Parser {
             }
 
 
+
+
         } catch (Exception e) {
 
         }
 
-        return null;
+        return result;
     }
 
 }
