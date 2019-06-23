@@ -1,8 +1,5 @@
 package it.lmico.myapplication;
 
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.select.Elements;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -12,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.*;
-import it.lmico.myapplication.Parser;
 
 /**
  * Example local unit test, which will execute on the development machine (host).
@@ -51,7 +47,7 @@ public class ParsingUnitTest {
 
     public void test_expectations() {
 
-        Map<String, ArrayList<Date>> result = Parser.parsePartenze(partenzeRaw);
+        Map<String, ArrayList<Date>> result = Parser.parseChanges(partenzeRaw);
         List<Date> colombo = result.get("Colombo");
         List<Date> psp = result.get("PSP");
         assertEquals(colombo, expectedColombo);

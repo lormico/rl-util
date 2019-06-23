@@ -7,19 +7,25 @@ import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+
+import static it.lmico.myapplication.Constants.NORTHBOUND;
+import static it.lmico.myapplication.Constants.SOUTHBOUND;
 
 
 public class DeparturesUtil {
 
     private static Map<String, Map<String, List<LocalTime>>> defaultDeparturesMap;
+    private Map<String, Map<String, List<LocalTime>>> departuresMap;
 
     public DeparturesUtil(XmlResourceParser departuresParser) {
 
         Log.v("DeparturesUtil", "initializing");
-        this.defaultDeparturesMap = DeparturesXMLParser.parseDepartures(departuresParser);
+        defaultDeparturesMap = DeparturesXMLParser.parseDepartures(departuresParser);
+        this.departuresMap = defaultDeparturesMap;
 
     }
 
@@ -124,4 +130,16 @@ public class DeparturesUtil {
         return day;
     }
 
+    public void applyChanges(Map<String, List<LocalTime>> changes) {
+
+        for (String direction : Arrays.asList(NORTHBOUND, SOUTHBOUND)) {
+
+            List<LocalTime> changeTimes = changes.get(direction);
+            if (changeTimes.size() > 0) {
+
+            }
+
+        }
+
+    }
 }

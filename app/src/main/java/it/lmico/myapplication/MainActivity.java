@@ -20,11 +20,13 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
 import it.lmico.myapplication.departures.DeparturesUtil;
+
+import static it.lmico.myapplication.Constants.NORTHBOUND;
+import static it.lmico.myapplication.Constants.SOUTHBOUND;
 
 public class MainActivity extends Activity {
 
@@ -82,8 +84,9 @@ public class MainActivity extends Activity {
 
                         if (cols.size() == 3 && cols.get(0).text().contains("LIDO")) {
 
-                            String partenzeRaw = cols.get(1).text();
-                            Map<String, ArrayList<LocalTime>> partenze = Parser.parsePartenze(partenzeRaw);
+                            String status = cols.get(1).text();
+                            Map<String, List<LocalTime>> changes = Parser.parseChanges(status);
+                            departuresUtil.applyChanges(changes);
 
                         }
                         //builder.append("\n").append("Link : ").append(row.attr("href"))
@@ -91,7 +94,7 @@ public class MainActivity extends Activity {
                     }
 
                     DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm");
-                    for (String direction : Arrays.asList("northbound", "southbound")) {
+                    for (String direction : Arrays.asList(NORTHBOUND, SOUTHBOUND)) {
                         StringBuilder s = new StringBuilder();
                         List<LocalTime> lastDeptList = departuresUtil.getLastNDepartures(direction, LocalDateTime.now(), 2);
                         List<LocalTime> nextDeptList = departuresUtil.getNextNDepartures(direction, LocalDateTime.now(), 3);
