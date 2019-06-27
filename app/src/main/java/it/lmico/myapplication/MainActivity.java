@@ -1,6 +1,7 @@
 package it.lmico.myapplication;
 
 import android.app.Activity;
+import android.app.Notification;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -72,8 +73,10 @@ public class MainActivity extends Activity {
                     Log.d("getWebsite", "done!");
                     String title = doc.title();
                     Elements rows = doc.select("tr");
+                    String status = "";
 
                     builder.append(title).append("\n");
+                    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm");
 
                     int i = 0;
                     for (Element row : rows) {
@@ -84,8 +87,17 @@ public class MainActivity extends Activity {
 
                         if (cols.size() == 3 && cols.get(0).text().contains("LIDO")) {
 
-                            String status = cols.get(1).text();
+                            status = cols.get(1).text();
                             Map<String, List<LocalTime>> changes = Parser.parseChanges(status);
+                            builder.append("\n").append("Letto da Atac:");
+                            for (String direction : Arrays.asList(NORTHBOUND, SOUTHBOUND)) {
+
+                                List<String> strDeptList = new ArrayList<>();
+                                for (LocalTime dept : changes.get(direction)) {
+                                    strDeptList.add(dept.format(dtf));
+                                }
+                                builder.append("\n").append(direction).append(": ").append(String.join(", ", strDeptList));
+                            }
                             departuresUtil.applyChanges(changes);
 
                         }
@@ -93,7 +105,7 @@ public class MainActivity extends Activity {
                         //        .append("\n").append("Text : ").append(row.text());7
                     }
 
-                    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm");
+                    builder.append("\n").append("Orari regolari:");
                     for (String direction : Arrays.asList(NORTHBOUND, SOUTHBOUND)) {
                         StringBuilder s = new StringBuilder();
                         List<LocalTime> lastDeptList = departuresUtil.getLastNDepartures(direction, LocalDateTime.now(), 2);
@@ -114,6 +126,8 @@ public class MainActivity extends Activity {
 //                        }
                         builder.append("\n").append(direction + ": ").append(String.join(", ", strDeptList));
                     }
+
+                    builder.append("\nStringa grezza:\n").append(status);
 
                 } catch (IOException e) {
                     builder.append("Error : ").append(e.getMessage()).append("\n");

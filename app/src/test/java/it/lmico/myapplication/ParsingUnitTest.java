@@ -76,6 +76,13 @@ public class ParsingUnitTest {
         test_expectations();
     }
 
+@Test
+public void doubleRegolare() {
+        partenzeRaw = "Prossime partenze:     da Porta San Paolo: regolare    da Colombo: 8.15-8.35 poi regolare";
+        expectedColombo = Arrays.asList(LocalTime.of(8,15), LocalTime.of(8,35));
+
+        test_expectations();
+}
 
     public void test_expectations() {
 

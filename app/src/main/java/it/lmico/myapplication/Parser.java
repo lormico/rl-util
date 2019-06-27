@@ -1,5 +1,7 @@
 package it.lmico.myapplication;
 
+import android.util.Log;
+
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -25,17 +27,19 @@ class Parser {
     private static Pattern pTwoNumericBlocks = Pattern.compile("([\\D]*)(("+sTime+")+)([\\D])("+sTime+")([\\D]*)");
     private static Pattern pOneNumericBlock = Pattern.compile("([\\D]*)(("+sTime+")+)([\\D])");
     private static Pattern pColomboGroup = Pattern.compile("(.*)(([c][a-z\\. ]*)?(colombo).*)", Pattern.CASE_INSENSITIVE);
+    private static Pattern pColombo = Pattern.compile("colombo|ostia", Pattern.CASE_INSENSITIVE);
     private static Pattern pPsp = Pattern.compile("[s]", Pattern.CASE_INSENSITIVE);
     private static Pattern pTime = Pattern.compile(sTime);
 
     private static Matcher mRegolare;
     private static Matcher mCifre;
     private static Matcher mColomboGroup;
+    private static Matcher mColombo;
     private static Matcher mPsp;
     private static Matcher mTime;
 
 
-    static Map<String, List<LocalTime>> parseChanges2(String s) {
+    static Map<String, List<LocalTime>> parseChanges(String s) {
 
         Map<String, List<LocalTime>> result = new HashMap<>();
         result.put(NORTHBOUND, new ArrayList<LocalTime>());
@@ -47,7 +51,7 @@ class Parser {
 
             List<String> foundTextGroups = new ArrayList<>();
             List<String> foundTimeGroups = new ArrayList<>();
-            if (mat.find()) {
+            while (mat.find()) {
                 foundTimeGroups.add(mat.group());
             }
 
@@ -62,8 +66,12 @@ class Parser {
                 mat = Pattern.compile(
                         "(.*?)(" + foundTimeGroups.get(0) + ")(.*)").matcher(s);
 
-                foundTextGroups.add(mat.group(1));
-                foundTextGroups.add(mat.group(2));
+                if (mat.matches()) {
+                    foundTextGroups.add(mat.group(1));
+                    foundTextGroups.add(mat.group(3));
+                } else {
+                    throw new Exception("AAAA");
+                }
 
                 int i = 0;
                 for (String textGroup : foundTextGroups) {
@@ -71,44 +79,106 @@ class Parser {
                     mat = pRegolare.matcher(textGroup);
                     if (mat.find()) {
 
-                        if (i==0) {
+                        if (i == 0) {
+
+                            // Il blocco prima degli orari contiene "regolare"
 
                             // >> PSP: regolare; CC: %%% <<
+                            //     Partenze da Porta San Paolo ore regolare da Colombo ore: 8.15-8.25-8.35-8.45-9.05  
 
-                            Pattern pRegolareGroup = Pattern.compile("(.*?)(regolare)(.*)", Pattern.CASE_INSENSITIVE)
+                            Pattern pRegolareGroup = Pattern.compile("(.*?)(regolare)(.*)", Pattern.CASE_INSENSITIVE);
                             mRegolare = pRegolareGroup.matcher(textGroup);
 
+                            Matcher mPspFirst;
+                            Matcher mColomboFirst;
+                            Matcher mPspLast;
+                            Matcher mColomboLast;
+
+                            if (mRegolare.matches()) {
+                                mPspFirst = pPsp.matcher(mRegolare.group(1));
+                                mColomboFirst = pColombo.matcher(mRegolare.group(1));
+                                mPspLast = pPsp.matcher(mRegolare.group(3));
+                                mColomboLast = pColombo.matcher(mRegolare.group(3));
+                            } else {
+                                throw new Exception("AAAA");
+                            }
+
+                            if (mPspFirst.find() && mColomboLast.find()) {
+                                result.put(NORTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
+                            } else if (mColomboFirst.find() && mPspLast.find()) {
+                                result.put(SOUTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
+                            } else {
+                                throw (new Exception("Non so che roba sia: " + s));
+                            }
+
+                        } else {
+
+                            // Il blocco dopo gli orari contiene "regolare"
+
+                            // >> xxx: %%%; yyy: regolare <<
+                            mPsp = pPsp.matcher(textGroup);
+                            mColombo = pColombo.matcher(textGroup);
+                            if (mPsp.find() && !mColombo.find()) {
+                                // >> CC: %%%; PSP: regolare <<
+                                result.put(NORTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
+                            } else if (mColombo.find() && !mPsp.find()) {
+                                // >> PSP: %%%; CC: regolare <<
+                                result.put(SOUTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
+                            }
 
                         }
 
                     }
 
                     i++;
+
                 }
 
             } else if (foundTimeGroups.size() == 2){
+
                 // doppia rimodulazione
                 mat = Pattern.compile(
                         "(.*?)(" +
                         foundTimeGroups.get(0) + ")(.*?)(" +
                         foundTimeGroups.get(1) + ")(.*)").matcher(s);
 
-                foundTextGroups.add(mat.group(1));
-                foundTextGroups.add(mat.group(2));
-                foundTextGroups.add(mat.group(3));
+                if (mat.matches()) {
+                    foundTextGroups.add(mat.group(1));
+                    foundTextGroups.add(mat.group(3));
+                    foundTextGroups.add(mat.group(5));
+                } else {
+                    throw new Exception("AAAA");
+                }
 
+                mPsp = pPsp.matcher(foundTextGroups.get(0));
+                mColombo = pColombo.matcher(foundTextGroups.get(0));
+
+                if (mPsp.find() && !mColombo.find()) {
+                    result.put(NORTHBOUND, getLocalTimesFromString(foundTimeGroups.get(1)));
+                    result.put(SOUTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
+                } else if (!mPsp.find() && mColombo.find()) {
+                    result.put(NORTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
+                    result.put(SOUTHBOUND, getLocalTimesFromString(foundTimeGroups.get(1)));
+                } else {
+                    throw new Exception("AAAA");
+                }
 
             } else {
                 // più di 2 gruppi, errore
+                throw new Exception("AAAA");
             }
 
-            }
 
+
+        } catch (Exception e) {
+            Log.e("Parser","problema nel parsing: " + e.getMessage());
         }
+
+        return result;
     }
 
 
-    static Map<String, List<LocalTime>> parseChanges(String s) {
+    static Map<String, List<LocalTime>> parseChanges_old(String s) {
 
         Map<String, List<LocalTime>> result = new HashMap<>();
         result.put(NORTHBOUND, new ArrayList<LocalTime>());
@@ -174,7 +244,7 @@ class Parser {
             result.put(SOUTHBOUND, getLocalTimesFromString(groupPsp));
 
         } catch (Exception e) {
-
+            // Gestire
         }
 
         return result;
