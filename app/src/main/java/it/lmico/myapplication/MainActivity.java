@@ -50,6 +50,7 @@ import java.util.Map;
 import it.lmico.myapplication.departures.DeparturesUtil;
 
 import static it.lmico.myapplication.Constants.NORTHBOUND;
+import static it.lmico.myapplication.Constants.ONE_LINER;
 import static it.lmico.myapplication.Constants.SOUTHBOUND;
 
 public class MainActivity extends Activity {
@@ -137,59 +138,17 @@ public class MainActivity extends Activity {
         stopService(serviceIntent);
     }
 
-    public SpannableStringBuilder formatDepartures(List<LocalTime> deptList) {
-
-        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm");
-        SpannableStringBuilder sb = new SpannableStringBuilder();
-        for (LocalTime dept : deptList) {
-            sb.append(" ").append(dept.format(dtf));
-
-            long delta = Duration.between(LocalTime.now(), dept).toMinutes();
-            String sDelta = "+" + String.valueOf(delta);
-            sb.append(" (").append(sDelta).append(")");
-
-            ForegroundColorSpan fcs;
-            if (delta > 15) {
-                fcs = new ForegroundColorSpan(Color.rgb(255,0,0));
-            } else if (delta > 10) {
-                fcs = new ForegroundColorSpan(Color.rgb(255,255,0));
-            } else {
-                fcs = new ForegroundColorSpan(Color.rgb(0,255,255));
-            }
-
-            int index = sb.toString().indexOf(sDelta);
-            sb.setSpan(fcs, index, index + sDelta.length(), Spanned.SPAN_INCLUSIVE_INCLUSIVE);
-            sb.setSpan(new StyleSpan(Typeface.BOLD), index, index + sDelta.length(), Spanned.SPAN_INCLUSIVE_INCLUSIVE);
-        }
-
-        return sb;
-    }
-
     public void updateNotification() {
         PendingIntent contentIntent = PendingIntent.getActivity(
                 this, 0, new Intent(this, MainActivity.class), 0);
-        List<LocalTime> deptsSouthbound = departuresUtil.getNextNDepartures(SOUTHBOUND, LocalDateTime.now(), 3);
-        List<LocalTime> deptsNorthbound = departuresUtil.getNextNDepartures(NORTHBOUND, LocalDateTime.now(), 3);
-
-        SpannableStringBuilder sbSouthbound = formatDepartures(deptsSouthbound);
-        sbSouthbound.insert(0, getString(R.string.southbound) + ":");
-
-        SpannableStringBuilder sbNorthbound = formatDepartures(deptsNorthbound);
-        sbNorthbound.insert(0, getString(R.string.northbound) + ":");
-
-
-        sbSouthbound.setSpan(new StyleSpan(Typeface.BOLD), 0, 6, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
-        sbNorthbound.setSpan(new StyleSpan(Typeface.BOLD), 0, 5, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
-
-        SpannableStringBuilder oneLiner = new SpannableStringBuilder();
-        oneLiner.append(sbSouthbound).append("\n").append(sbNorthbound);
+        Map<String, Spanned> notificationContent = departuresUtil.getNotificationContent();
         Notification notification = new NotificationCompat.Builder(this, ForegroundService.CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_notification)
                 .setContentIntent(contentIntent)
-                .setContentText(oneLiner)
+                .setContentText(notificationContent.get(ONE_LINER))
                 .setStyle(new NotificationCompat.InboxStyle()
-                        .addLine(sbSouthbound)
-                        .addLine(sbNorthbound)
+                        .addLine(notificationContent.get(SOUTHBOUND))
+                        .addLine(notificationContent.get(NORTHBOUND))
                         .setBigContentTitle("Servizio regolare")
                         .setSummaryText("Prossime partenze"))
                 .build();

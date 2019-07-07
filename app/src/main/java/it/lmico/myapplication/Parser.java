@@ -38,6 +38,12 @@ class Parser {
     private static Matcher mPsp;
     private static Matcher mTime;
 
+    private static Matcher mPspFirst;
+    private static Matcher mColomboFirst;
+    private static Matcher mPspLast;
+    private static Matcher mColomboLast;
+    private static Matcher mRegolareFirst;
+    private static Matcher mRegolareLast;
 
     static Map<String, List<LocalTime>> parseChanges(String s) {
 
@@ -77,13 +83,6 @@ class Parser {
                 }
 
                 // Controlla la struttura tipo "Partenze da XXX hh:mm hh:mm"
-                Matcher mPspFirst;
-                Matcher mColomboFirst;
-                Matcher mPspLast;
-                Matcher mColomboLast;
-                Matcher mRegolareFirst;
-                Matcher mRegolareLast;
-
 
                 mPspFirst = pPsp.matcher(foundTextGroups.get(0));
                 mColomboFirst = pColombo.matcher(foundTextGroups.get(0));
@@ -121,29 +120,8 @@ class Parser {
                     } else {
                         // Il blocco prima degli orari contiene "regolare"; a chi si riferisce?
                         // "XXX regolare YYY hh:mm"
+                        handleOneRegolare(foundTextGroups.get(0), foundTimeGroups.get(0), result);
 
-                        Pattern pRegolareGroup = Pattern.compile("(.*?)(regolare)(.*)", Pattern.CASE_INSENSITIVE);
-                        mRegolare = pRegolareGroup.matcher(foundTextGroups.get(0));
-
-                        if (mRegolare.matches()) {
-                            // Necessario altrimenti non riesco a chiamare .group(int)
-                            mPspFirst = pPsp.matcher(mRegolare.group(1));
-                            mColomboFirst = pColombo.matcher(mRegolare.group(1));
-                            mPspLast = pPsp.matcher(mRegolare.group(3));
-                            mColomboLast = pColombo.matcher(mRegolare.group(3));
-                        } else {
-                            throw new Exception("AAAA");
-                        }
-
-                        boolean pspThenColombo = mPspFirst.find() && mColomboLast.find();
-                        boolean colomboThenPsp = mColomboFirst.find() && mPspLast.find();
-                        if (pspThenColombo) {
-                            result.put(NORTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
-                        } else if (colomboThenPsp) {
-                            result.put(SOUTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
-                        } else {
-                            throw (new Exception("Non so che roba sia: " + s));
-                        }
                     }
 
                 } else {
@@ -170,29 +148,7 @@ class Parser {
                         // XXX regolare YYY hh:mm poi regolare
                         // ignoro il secondo regolare, tratto come il caso regolare
 
-                        // TODO duplicato da sopra, accorpare in una funzione
-                        Pattern pRegolareGroup = Pattern.compile("(.*?)(regolare)(.*)", Pattern.CASE_INSENSITIVE);
-                        mRegolare = pRegolareGroup.matcher(foundTextGroups.get(0));
-
-                        if (mRegolare.matches()) {
-                            // Necessario altrimenti non riesco a chiamare .group(int)
-                            mPspFirst = pPsp.matcher(mRegolare.group(1));
-                            mColomboFirst = pColombo.matcher(mRegolare.group(1));
-                            mPspLast = pPsp.matcher(mRegolare.group(3));
-                            mColomboLast = pColombo.matcher(mRegolare.group(3));
-                        } else {
-                            throw new Exception("AAAA");
-                        }
-
-                        boolean pspThenColombo = mPspFirst.find() && mColomboLast.find();
-                        boolean colomboThenPsp = mColomboFirst.find() && mPspLast.find();
-                        if (pspThenColombo) {
-                            result.put(NORTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
-                        } else if (colomboThenPsp) {
-                            result.put(SOUTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
-                        } else {
-                            throw (new Exception("Non so che roba sia: " + s));
-                        }
+                        handleOneRegolare(foundTextGroups.get(0), foundTimeGroups.get(0), result);
                     } else {
                         throw new Exception("Formato imprevisto per " + s);
                     }
@@ -241,6 +197,33 @@ class Parser {
         return result;
     }
 
+    /*
+        Funzione che gestisce il caso "XXX regolare YYY hh:mm"
+     */
+    private static void handleOneRegolare(String textGroup, String timeGroup, Map<String, List<LocalTime>> result) throws Exception {
+        Pattern pRegolareGroup = Pattern.compile("(.*?)(regolare)(.*)", Pattern.CASE_INSENSITIVE);
+        mRegolare = pRegolareGroup.matcher(textGroup);
+
+        if (mRegolare.matches()) {
+            // Necessario altrimenti non riesco a chiamare .group(int)
+            mPspFirst = pPsp.matcher(mRegolare.group(1));
+            mColomboFirst = pColombo.matcher(mRegolare.group(1));
+            mPspLast = pPsp.matcher(mRegolare.group(3));
+            mColomboLast = pColombo.matcher(mRegolare.group(3));
+        } else {
+            throw new Exception("AAAA");
+        }
+
+        boolean pspThenColombo = mPspFirst.find() && mColomboLast.find();
+        boolean colomboThenPsp = mColomboFirst.find() && mPspLast.find();
+        if (pspThenColombo) {
+            result.put(NORTHBOUND, getLocalTimesFromString(timeGroup));
+        } else if (colomboThenPsp) {
+            result.put(SOUTHBOUND, getLocalTimesFromString(timeGroup));
+        } else {
+            throw (new Exception("Non so che roba sia!"));
+        }
+    }
 
     public static List<LocalTime> getLocalTimesFromString(String s) throws Exception {
 
