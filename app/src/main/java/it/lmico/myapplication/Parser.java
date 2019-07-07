@@ -62,7 +62,10 @@ class Parser {
 
             } else if (foundTimeGroups.size() == 1) {
 
-                // solo uno regolare
+x                // trovato un solo blocco di orari
+                // posso avere tipo "partenze da psp regolari da colombo 10.30 10.40"
+                // oppure "partenze da psp 10.20 10.40"
+
                 mat = Pattern.compile(
                         "(.*?)(" + foundTimeGroups.get(0) + ")(.*)").matcher(s);
 
@@ -70,68 +73,129 @@ class Parser {
                     foundTextGroups.add(mat.group(1));
                     foundTextGroups.add(mat.group(3));
                 } else {
-                    throw new Exception("AAAA");
+                    throw new Exception("Impossibile estrarre testo prima e dopo i blocchi di orari per " + s);
                 }
 
-                int i = 0;
-                for (String textGroup : foundTextGroups) {
+                // Controlla la struttura tipo "Partenze da XXX hh:mm hh:mm"
+                Matcher mPspFirst;
+                Matcher mColomboFirst;
+                Matcher mPspLast;
+                Matcher mColomboLast;
+                Matcher mRegolareFirst;
+                Matcher mRegolareLast;
 
-                    mat = pRegolare.matcher(textGroup);
-                    if (mat.find()) {
 
-                        if (i == 0) {
+                mPspFirst = pPsp.matcher(foundTextGroups.get(0));
+                mColomboFirst = pColombo.matcher(foundTextGroups.get(0));
+                mRegolareFirst = pRegolare.matcher(foundTextGroups.get(0));
+                mPspLast = pPsp.matcher(foundTextGroups.get(1));
+                mColomboLast = pColombo.matcher(foundTextGroups.get(1));
+                mRegolareLast = pRegolare.matcher(foundTextGroups.get(1));
 
-                            // Il blocco prima degli orari contiene "regolare"
+                boolean bPspFirst = mPspFirst.find();
+                boolean bColomboFirst = mColomboFirst.find();
+                boolean bRegolareFirst = mRegolareFirst.find();
+                boolean bPspLast = mPspLast.find();
+                boolean bColomboLast = mColomboLast.find();
+                boolean bRegolareLast = mRegolareLast.find();
 
-                            // >> PSP: regolare; CC: %%% <<
-                            //     Partenze da Porta San Paolo ore regolare da Colombo ore: 8.15-8.25-8.35-8.45-9.05  
+                boolean noInfoInLast = !bPspLast && !bColomboLast && !bRegolareLast;
+                boolean noRegolareAtAll = !bRegolareFirst && !bRegolareLast;
+                boolean onlyPspFirst = bPspFirst && !bColomboFirst;
+                boolean onlyColomboFirst = bColomboFirst && !bPspFirst;
 
-                            Pattern pRegolareGroup = Pattern.compile("(.*?)(regolare)(.*)", Pattern.CASE_INSENSITIVE);
-                            mRegolare = pRegolareGroup.matcher(textGroup);
+                if (noInfoInLast) {
+                    // tutte le informazioni sono concentrate nel primo blocco di testo
+                    // posso avere "XXX regolare YYY hh:mm"
+                    //      oppure "XXX hh:mm"
 
-                            Matcher mPspFirst;
-                            Matcher mColomboFirst;
-                            Matcher mPspLast;
-                            Matcher mColomboLast;
-
-                            if (mRegolare.matches()) {
-                                mPspFirst = pPsp.matcher(mRegolare.group(1));
-                                mColomboFirst = pColombo.matcher(mRegolare.group(1));
-                                mPspLast = pPsp.matcher(mRegolare.group(3));
-                                mColomboLast = pColombo.matcher(mRegolare.group(3));
-                            } else {
-                                throw new Exception("AAAA");
-                            }
-
-                            if (mPspFirst.find() && mColomboLast.find()) {
-                                result.put(NORTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
-                            } else if (mColomboFirst.find() && mPspLast.find()) {
-                                result.put(SOUTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
-                            } else {
-                                throw (new Exception("Non so che roba sia: " + s));
-                            }
-
+                    if (noRegolareAtAll) {
+                        // "XXX hh:mm"
+                        if (onlyPspFirst) {
+                            result.put(SOUTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
+                        } else if (onlyColomboFirst) {
+                            result.put(NORTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
                         } else {
+                            throw new Exception("AAAA");
+                        }
+                    } else {
+                        // Il blocco prima degli orari contiene "regolare"; a chi si riferisce?
+                        // "XXX regolare YYY hh:mm"
 
-                            // Il blocco dopo gli orari contiene "regolare"
+                        Pattern pRegolareGroup = Pattern.compile("(.*?)(regolare)(.*)", Pattern.CASE_INSENSITIVE);
+                        mRegolare = pRegolareGroup.matcher(foundTextGroups.get(0));
 
-                            // >> xxx: %%%; yyy: regolare <<
-                            mPsp = pPsp.matcher(textGroup);
-                            mColombo = pColombo.matcher(textGroup);
-                            if (mPsp.find() && !mColombo.find()) {
-                                // >> CC: %%%; PSP: regolare <<
-                                result.put(NORTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
-                            } else if (mColombo.find() && !mPsp.find()) {
-                                // >> PSP: %%%; CC: regolare <<
-                                result.put(SOUTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
-                            }
-
+                        if (mRegolare.matches()) {
+                            // Necessario altrimenti non riesco a chiamare .group(int)
+                            mPspFirst = pPsp.matcher(mRegolare.group(1));
+                            mColomboFirst = pColombo.matcher(mRegolare.group(1));
+                            mPspLast = pPsp.matcher(mRegolare.group(3));
+                            mColomboLast = pColombo.matcher(mRegolare.group(3));
+                        } else {
+                            throw new Exception("AAAA");
                         }
 
+                        boolean pspThenColombo = mPspFirst.find() && mColomboLast.find();
+                        boolean colomboThenPsp = mColomboFirst.find() && mPspLast.find();
+                        if (pspThenColombo) {
+                            result.put(NORTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
+                        } else if (colomboThenPsp) {
+                            result.put(SOUTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
+                        } else {
+                            throw (new Exception("Non so che roba sia: " + s));
+                        }
                     }
 
-                    i++;
+                } else {
+                    // Ci sono informazioni sia prima che dopo il blocco di orari
+                    // XXX regolare YYY hh:mm ---- ESCLUSO A PRIORI
+                    // XXX hh:mm YYY regolare
+                    // XXX regolare YYY hh:mm poi regolare
 
+                    // Confermo che effettivamente regolare sia dopo
+                    //boolean onlyFirstRegolare = mRegolareFirst.find() && !mRegolareLast.find();
+                    boolean onlyLastRegolare = !bRegolareFirst && bRegolareLast;
+                    boolean twoRegolare = bRegolareFirst && bRegolareLast;
+                    if (onlyLastRegolare) {
+                        mPsp = pPsp.matcher(foundTextGroups.get(1));
+                        mColombo = pColombo.matcher(foundTextGroups.get(1));
+                        if (mPsp.find() && !mColombo.find()) {
+                            // "CC hh:mm PSP regolare"
+                            result.put(NORTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
+                        } else if (mColombo.find() && !mPsp.find()) {
+                            // "PSP hh:mm CC regolare"
+                            result.put(SOUTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
+                        }
+                    } else if (twoRegolare) {
+                        // XXX regolare YYY hh:mm poi regolare
+                        // ignoro il secondo regolare, tratto come il caso regolare
+
+                        // TODO duplicato da sopra, accorpare in una funzione
+                        Pattern pRegolareGroup = Pattern.compile("(.*?)(regolare)(.*)", Pattern.CASE_INSENSITIVE);
+                        mRegolare = pRegolareGroup.matcher(foundTextGroups.get(0));
+
+                        if (mRegolare.matches()) {
+                            // Necessario altrimenti non riesco a chiamare .group(int)
+                            mPspFirst = pPsp.matcher(mRegolare.group(1));
+                            mColomboFirst = pColombo.matcher(mRegolare.group(1));
+                            mPspLast = pPsp.matcher(mRegolare.group(3));
+                            mColomboLast = pColombo.matcher(mRegolare.group(3));
+                        } else {
+                            throw new Exception("AAAA");
+                        }
+
+                        boolean pspThenColombo = mPspFirst.find() && mColomboLast.find();
+                        boolean colomboThenPsp = mColomboFirst.find() && mPspLast.find();
+                        if (pspThenColombo) {
+                            result.put(NORTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
+                        } else if (colomboThenPsp) {
+                            result.put(SOUTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
+                        } else {
+                            throw (new Exception("Non so che roba sia: " + s));
+                        }
+                    } else {
+                        throw new Exception("Formato imprevisto per " + s);
+                    }
                 }
 
             } else if (foundTimeGroups.size() == 2){
@@ -177,78 +241,6 @@ class Parser {
         return result;
     }
 
-
-    static Map<String, List<LocalTime>> parseChanges_old(String s) {
-
-        Map<String, List<LocalTime>> result = new HashMap<>();
-        result.put(NORTHBOUND, new ArrayList<LocalTime>());
-        result.put(SOUTHBOUND, new ArrayList<LocalTime>());
-
-        /*
-        STRATEGIA 2)
-            - se ci sono parole chiave tipo "sciopero" arresta l'esecuzione (non ancora gestito)
-            - cerca due blocchi di cifre in cui non ci sono caratteri a-z in mezzo
-                - se li trova, sono rimodulate entrambe le direzioni:
-                    - parsa il testo prima del primo blocco e fra il primo e il secondo
-                    - assegna le direzioni dal testo parsato
-                - se non li trova, è rimodulata solo una direzione:
-                    - si aspetta 'regolare' fuori dal gruppo di orari
-         */
-
-
-        try {
-
-            // Cerca di dividere PSP e Colombo, non sapendo se venga prima uno o l'altro
-            Boolean pspThenColombo = null;
-            mColomboGroup = pColomboGroup.matcher(s);
-            List<String> groups = new ArrayList<>();
-            if (mColomboGroup.matches()) {
-                groups.add(mColomboGroup.group(1));
-                groups.add(mColomboGroup.group(2));
-            }
-
-            for (int i = 0; i < groups.size(); i++) {
-
-                countPsp = 0;
-                mPsp = pPsp.matcher(groups.get(i));
-                while (mPsp.find()) {
-                    countPsp++;
-                }
-
-                if (countPsp != 0) {
-                    pspThenColombo = i == 0;
-                }
-
-            }
-
-            String groupPsp = "";
-            String groupColombo = "";
-            if (pspThenColombo == null) {
-                // non sono nominati colombo o psp, mi aspetto regolare
-                mRegolare = pRegolare.matcher(s);
-                while (mRegolare.find()) { countRegolare++; }
-                if (countRegolare == 1) {
-                    return result;
-                } else {
-                    throw new Exception("Impossibile identificare la stringa: " + s);
-                }
-            } else if (pspThenColombo == true) {
-                groupPsp = groups.get(0);
-                groupColombo = groups.get(1);
-            } else if (pspThenColombo == false) {
-                groupPsp = groups.get(1);
-                groupColombo = groups.get(0);
-            }
-
-            result.put(NORTHBOUND, getLocalTimesFromString(groupColombo));
-            result.put(SOUTHBOUND, getLocalTimesFromString(groupPsp));
-
-        } catch (Exception e) {
-            // Gestire
-        }
-
-        return result;
-    }
 
     public static List<LocalTime> getLocalTimesFromString(String s) throws Exception {
 

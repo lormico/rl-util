@@ -12,9 +12,13 @@ import android.os.IBinder;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
+import java.util.Timer;
+import java.util.TimerTask;
+
 public class ForegroundService extends Service {
 
     public static final String CHANNEL_ID = "ForegroundServiceChannel";
+    Timer timer = new Timer();
 
     @Override
     public void onCreate() {
@@ -37,6 +41,13 @@ public class ForegroundService extends Service {
 
         startForeground(1, notification);
 
+        /*
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                intent.;
+            }
+        });*/
         // robe in background
 
         // stopSelf();

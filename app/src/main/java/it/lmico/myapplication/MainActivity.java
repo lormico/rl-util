@@ -126,7 +126,7 @@ public class MainActivity extends Activity {
         notificationManager.notify(1, notification);
     }
 
-    private void getWebsite() {
+    public void getWebsite() {
         new Thread(new Runnable() {
             @Override
             public void run() {
