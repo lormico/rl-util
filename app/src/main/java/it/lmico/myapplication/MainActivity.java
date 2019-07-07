@@ -5,11 +5,21 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -18,6 +28,7 @@ import android.widget.TextView;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -26,6 +37,7 @@ import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -47,6 +59,11 @@ public class MainActivity extends Activity {
     private SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
     private DeparturesUtil departuresUtil;
     private NotificationManager notificationManager;
+    private BroadcastReceiver mBroadcastReceiver;
+
+    public static final String RECEIVER_INTENT = "RECEIVER_INTENT";
+    public static final String RECEIVER_MESSAGE = "RECEIVER_MESSAGE";
+    public static final String UPDATE_DEPARTURES = "UPDATE_DEPARTURES";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,26 +97,32 @@ public class MainActivity extends Activity {
 
         departuresUtil = new DeparturesUtil(getResources().getXml(R.xml.departures));
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-/*
-        // gestione delle notifiche
-        NotificationChannel channel = new NotificationChannel(
-                "NOTIF_CHAN_ID",
-                "NOTIF_CHAN_NAME",
-                NotificationManager.IMPORTANCE_HIGH);
-        channel.setDescription("NOTIF_CHAN_DESCRIPTION");
 
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.createNotificationChannel(channel);
+        mBroadcastReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                Log.d("MainActivity","received broadcast!");
+                String message = intent.getStringExtra(RECEIVER_MESSAGE);
+                Log.d("MainActivity", "message: " + message);
+                switch (message) {
+                    case UPDATE_DEPARTURES: getWebsite();
+                }
+            }
+        };
+    }
 
-        Notification notification = new Notification.Builder(this, "NOTIF_CHAN_ID")
-                .setSmallIcon(R.drawable.ic_stat_notification)
-                .setContentTitle("NOTIF_CONTENT_TITLE")
-                .setContentText("NOTIF_CONTENT_TEXT")
-                .build();
-*/
+    @Override
+    protected void onStart() {
+        super.onStart();
+        LocalBroadcastManager.getInstance(this).registerReceiver((mBroadcastReceiver),
+                new IntentFilter(RECEIVER_INTENT)
+        );
+    }
 
-        // notificationManager.notify("aoh", notification);
-
+    @Override
+    protected void onStop() {
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mBroadcastReceiver);
+        super.onStop();
     }
 
     public void startService() {
@@ -114,14 +137,61 @@ public class MainActivity extends Activity {
         stopService(serviceIntent);
     }
 
-    public void updateNotification(String title, String text) {
+    public SpannableStringBuilder formatDepartures(List<LocalTime> deptList) {
+
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm");
+        SpannableStringBuilder sb = new SpannableStringBuilder();
+        for (LocalTime dept : deptList) {
+            sb.append(" ").append(dept.format(dtf));
+
+            long delta = Duration.between(LocalTime.now(), dept).toMinutes();
+            String sDelta = "+" + String.valueOf(delta);
+            sb.append(" (").append(sDelta).append(")");
+
+            ForegroundColorSpan fcs;
+            if (delta > 15) {
+                fcs = new ForegroundColorSpan(Color.rgb(255,0,0));
+            } else if (delta > 10) {
+                fcs = new ForegroundColorSpan(Color.rgb(255,255,0));
+            } else {
+                fcs = new ForegroundColorSpan(Color.rgb(0,255,255));
+            }
+
+            int index = sb.toString().indexOf(sDelta);
+            sb.setSpan(fcs, index, index + sDelta.length(), Spanned.SPAN_INCLUSIVE_INCLUSIVE);
+            sb.setSpan(new StyleSpan(Typeface.BOLD), index, index + sDelta.length(), Spanned.SPAN_INCLUSIVE_INCLUSIVE);
+        }
+
+        return sb;
+    }
+
+    public void updateNotification() {
         PendingIntent contentIntent = PendingIntent.getActivity(
                 this, 0, new Intent(this, MainActivity.class), 0);
+        List<LocalTime> deptsSouthbound = departuresUtil.getNextNDepartures(SOUTHBOUND, LocalDateTime.now(), 3);
+        List<LocalTime> deptsNorthbound = departuresUtil.getNextNDepartures(NORTHBOUND, LocalDateTime.now(), 3);
+
+        SpannableStringBuilder sbSouthbound = formatDepartures(deptsSouthbound);
+        sbSouthbound.insert(0, getString(R.string.southbound) + ":");
+
+        SpannableStringBuilder sbNorthbound = formatDepartures(deptsNorthbound);
+        sbNorthbound.insert(0, getString(R.string.northbound) + ":");
+
+
+        sbSouthbound.setSpan(new StyleSpan(Typeface.BOLD), 0, 6, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+        sbNorthbound.setSpan(new StyleSpan(Typeface.BOLD), 0, 5, Spannable.SPAN_INCLUSIVE_INCLUSIVE);
+
+        SpannableStringBuilder oneLiner = new SpannableStringBuilder();
+        oneLiner.append(sbSouthbound).append("\n").append(sbNorthbound);
         Notification notification = new NotificationCompat.Builder(this, ForegroundService.CHANNEL_ID)
-                .setContentTitle(title)
-                .setContentText(text)
                 .setSmallIcon(R.drawable.ic_stat_notification)
                 .setContentIntent(contentIntent)
+                .setContentText(oneLiner)
+                .setStyle(new NotificationCompat.InboxStyle()
+                        .addLine(sbSouthbound)
+                        .addLine(sbNorthbound)
+                        .setBigContentTitle("Servizio regolare")
+                        .setSummaryText("Prossime partenze"))
                 .build();
         notificationManager.notify(1, notification);
     }
@@ -163,6 +233,8 @@ public class MainActivity extends Activity {
 
                             status = cols.get(1).text();
                             Map<String, List<LocalTime>> changes = Parser.parseChanges(status);
+
+                            // Estrarre questo blocco in altra funzione "estetica"
                             builder.append("\n").append("Letto da Atac:");
                             for (String direction : Arrays.asList(NORTHBOUND, SOUTHBOUND)) {
                                 List<String> strDeptList = new ArrayList<>();
@@ -173,21 +245,16 @@ public class MainActivity extends Activity {
                                 }
                                 builder.append("\n").append(direction).append(": ").append(String.join(", ", strDeptList));
                             }
+                            //
+
                             departuresUtil.applyChanges(changes);
 
                         }
 
-                        String notifTitle;
-                        if (regolare) {
-                            notifTitle = "Servizio Regolare";
-                        } else {
-                            notifTitle = "Servizio Rimodulato";
-                        }
-                        updateNotification(notifTitle, status);
-                        //builder.append("\n").append("Link : ").append(row.attr("href"))
-                        //        .append("\n").append("Text : ").append(row.text());7
+                        updateNotification();
                     }
 
+                    // Estrarre questo blocco in altra funzione "estetica"
                     builder.append("\n").append("Orari regolari:");
                     for (String direction : Arrays.asList(NORTHBOUND, SOUTHBOUND)) {
                         StringBuilder s = new StringBuilder();
@@ -211,6 +278,7 @@ public class MainActivity extends Activity {
                     }
 
                     builder.append("\nStringa grezza:\n").append(status);
+                    //
 
                 } catch (IOException e) {
                     builder.append("Error : ").append(e.getMessage()).append("\n");
@@ -225,88 +293,5 @@ public class MainActivity extends Activity {
             }
         }).start();
     }
-
-/*
-    public void sendNotification(View view) {
-
-        // BEGIN_INCLUDE(build_action)
-        */
-/** Create an intent that will be fired when the user clicks the notification.
-         * The intent needs to be packaged into a {@link android.app.PendingIntent} so that the
-         * notification service can fire it on our behalf.
-         *//*
-
-        Intent intent = new Intent(Intent.ACTION_VIEW,
-                Uri.parse("http://developer.android.com/reference/android/app/Notification.html"));
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, 0);
-        // END_INCLUDE(build_action)
-
-        // BEGIN_INCLUDE (build_notification)
-        */
-/**
-         * Use NotificationCompat.Builder to set up our notification.
-         *//*
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this);
-
-        */
-/** Set the icon that will appear in the notification bar. This icon also appears
-         * in the lower right hand corner of the notification itself.
-         *
-         * Important note: although you can use any drawable as the small icon, Android
-         * design guidelines state that the icon should be simple and monochrome. Full-color
-         * bitmaps or busy images don't render well on smaller screens and can end up
-         * confusing the user.
-         *//*
-
-        builder.setSmallIcon(R.drawable.ic_stat_notification);
-
-        // Set the intent that will fire when the user taps the notification.
-        builder.setContentIntent(pendingIntent);
-
-        // Set the notification to auto-cancel. This means that the notification will disappear
-        // after the user taps it, rather than remaining until it's explicitly dismissed.
-        builder.setAutoCancel(true);
-
-        */
-/**
-         *Build the notification's appearance.
-         * Set the large icon, which appears on the left of the notification. In this
-         * sample we'll set the large icon to be the same as our app icon. The app icon is a
-         * reasonable default if you don't have anything more compelling to use as an icon.
-         *//*
-
-        builder.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher_foreground));
-
-        */
-/**
-         * Set the text of the notification. This sample sets the three most commononly used
-         * text areas:
-         * 1. The content title, which appears in large type at the top of the notification
-         * 2. The content text, which appears in smaller text below the title
-         * 3. The subtext, which appears under the text on newer devices. Devices running
-         *    versions of Android prior to 4.2 will ignore this field, so don't use it for
-         *    anything vital!
-         *//*
-
-        builder.setContentTitle("BasicNotifications Sample");
-        builder.setContentText("Time to learn about notifications!");
-        builder.setSubText("Tap to view documentation about notifications.");
-        builder.
-        // END_INCLUDE (build_notification)
-
-        // BEGIN_INCLUDE(send_notification)
-        */
-/**
-         * Send the notification. This will immediately display the notification icon in the
-         * notification bar.
-         *//*
-
-        NotificationManager notificationManager = (NotificationManager) getSystemService(
-                NOTIFICATION_SERVICE);
-        notificationManager.notify(0, builder.build());
-        // END_INCLUDE(send_notification)
-    }
-*/
 
 }

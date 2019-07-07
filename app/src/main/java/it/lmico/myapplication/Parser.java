@@ -62,7 +62,7 @@ class Parser {
 
             } else if (foundTimeGroups.size() == 1) {
 
-x                // trovato un solo blocco di orari
+                // trovato un solo blocco di orari
                 // posso avere tipo "partenze da psp regolari da colombo 10.30 10.40"
                 // oppure "partenze da psp 10.20 10.40"
 

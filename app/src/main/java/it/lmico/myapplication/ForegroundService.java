@@ -8,9 +8,11 @@ import android.app.Service;
 import android.content.Intent;
 import android.os.Build;
 import android.os.IBinder;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.util.Timer;
 import java.util.TimerTask;
@@ -41,19 +43,25 @@ public class ForegroundService extends Service {
 
         startForeground(1, notification);
 
-        /*
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                intent.;
+                askUpdate();
             }
-        });*/
+        }, 0, 5000);
         // robe in background
 
         // stopSelf();
 
         return START_NOT_STICKY;
 
+    }
+
+    public void askUpdate() {
+        Log.d("askUpdate", "sending broadcast...");
+        final Intent receiverIntent = new Intent(MainActivity.RECEIVER_INTENT);
+        receiverIntent.putExtra(MainActivity.RECEIVER_MESSAGE, MainActivity.UPDATE_DEPARTURES);
+        LocalBroadcastManager.getInstance(this).sendBroadcast(receiverIntent);
     }
 
     @Override

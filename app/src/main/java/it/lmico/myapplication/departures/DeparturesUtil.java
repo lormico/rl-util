@@ -18,6 +18,8 @@ import static it.lmico.myapplication.Constants.SOUTHBOUND;
 
 public class DeparturesUtil {
 
+    public boolean hasChanges = false;
+
     private static Map<String, Map<String, List<LocalTime>>> defaultDeparturesMap;
     private Map<String, Map<String, List<LocalTime>>> departuresMap;
 
@@ -136,6 +138,8 @@ public class DeparturesUtil {
 
             List<LocalTime> changeTimes = changes.get(direction);
             if (changeTimes.size() > 0) {
+
+                this.hasChanges = true;
 
             }
 
