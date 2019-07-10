@@ -24,4 +24,5 @@ public class ExampleInstrumentedTest {
 
         assertEquals("it.lmico.myapplication", appContext.getPackageName());
     }
+
 }

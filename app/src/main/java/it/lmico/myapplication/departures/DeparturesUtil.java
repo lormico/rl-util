@@ -4,15 +4,12 @@ import android.content.res.XmlResourceParser;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.text.Spannable;
-import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
 import android.util.Log;
-
-import androidx.annotation.Nullable;
 
 import java.time.DayOfWeek;
 import java.time.Duration;
@@ -21,15 +18,14 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-import it.lmico.myapplication.R;
+import it.lmico.myapplication.Parser;
 
+import static it.lmico.myapplication.Constants.HMF;
 import static it.lmico.myapplication.Constants.NORTHBOUND;
 import static it.lmico.myapplication.Constants.ONE_LINER;
 import static it.lmico.myapplication.Constants.SOUTHBOUND;
@@ -37,24 +33,26 @@ import static it.lmico.myapplication.Constants.SOUTHBOUND;
 
 public class DeparturesUtil {
 
-    public boolean hasChanges = false;
-    private static DateTimeFormatter hmf = DateTimeFormatter.ofPattern("HH:mm");
+    public static final int DEFAULT = 0;
+    public static final int CHANGED = 1;
 
-    private static Map<String, Map<String, List<LocalTime>>> defaultDeparturesMap;
-    private Map<String, Map<String, List<LocalTime>>> departuresMap;
+    public boolean hasChanges = false;
+
+    private static DeparturesMap defaultDeparturesMap;
+    private DeparturesMap departuresMap;
 
     public DeparturesUtil(XmlResourceParser departuresParser) {
 
         Log.v("DeparturesUtil", "initializing");
         defaultDeparturesMap = DeparturesXMLParser.parseDepartures(departuresParser);
-        this.departuresMap = defaultDeparturesMap;
+        this.departuresMap = defaultDeparturesMap.clone();
 
     }
 
-    public List<LocalTime> getNextNDepartures(String direction, LocalDateTime dateTime, int n) {
+    public List<LocalTime> getNextNDepartures(String direction, LocalDateTime dateTime, int n, int set) {
 
         List<LocalTime> deptList = new ArrayList<>();
-        LocalTime dept = getNextDeparture(direction, dateTime);
+        LocalTime dept = getNextDeparture(direction, dateTime, set);
         int i = 0;
 
         while (!(dept == null) && i<n) {
@@ -62,7 +60,7 @@ public class DeparturesUtil {
             deptList.add(dept);
 
             dateTime = dateTime.with(dept);
-            dept = getNextDeparture(direction, dateTime);
+            dept = getNextDeparture(direction, dateTime, set);
             i++;
 
         }
@@ -71,10 +69,10 @@ public class DeparturesUtil {
 
     }
 
-    public List<LocalTime> getLastNDepartures(String direction, LocalDateTime dateTime, int n) {
+    public List<LocalTime> getLastNDepartures(String direction, LocalDateTime dateTime, int n, int set) {
 
         List<LocalTime> deptList = new ArrayList<>();
-        LocalTime dept = getLastDeparture(direction, dateTime);
+        LocalTime dept = getLastDeparture(direction, dateTime, set);
         int i = 0;
 
         while (!(dept == null) && i<n) {
@@ -82,7 +80,7 @@ public class DeparturesUtil {
             deptList.add(dept);
 
             dateTime = dateTime.with(dept);
-            dept = getLastDeparture(direction, dateTime);
+            dept = getLastDeparture(direction, dateTime, set);
             i++;
 
         }
@@ -91,16 +89,26 @@ public class DeparturesUtil {
 
     }
 
-    public LocalTime getNextDeparture(String direction, LocalDateTime dateTime) {
+    public LocalTime getNextDeparture(String direction, LocalDateTime dateTime, int set) {
 
-        List<LocalTime> depts = this.defaultDeparturesMap.get(direction).get(getDayType(dateTime));
+        DeparturesMap departuresMap = null;
+        switch (set) {
+            case DEFAULT: departuresMap = defaultDeparturesMap;
+            case CHANGED: departuresMap = this.departuresMap;
+        }
+        List<LocalTime> depts = departuresMap.get(direction).get(getDayType(dateTime));
         return getNextTime(depts, dateTime.toLocalTime());
 
     }
 
-    public LocalTime getLastDeparture(String direction, LocalDateTime dateTime) {
+    public LocalTime getLastDeparture(String direction, LocalDateTime dateTime, int set) {
 
-        List<LocalTime> depts = this.defaultDeparturesMap.get(direction).get(getDayType(dateTime));
+        DeparturesMap departuresMap = null;
+        switch (set) {
+            case DEFAULT: departuresMap = defaultDeparturesMap;
+            case CHANGED: departuresMap = this.departuresMap;
+        }
+        List<LocalTime> depts = departuresMap.get(direction).get(getDayType(dateTime));
         return getLastTime(depts, dateTime.toLocalTime());
 
     }
@@ -152,16 +160,45 @@ public class DeparturesUtil {
         return day;
     }
 
-    public void applyChanges(Map<String, List<LocalTime>> changes) {
+    public void updateDepartures() {
 
-        /* TODO creare mappa parallela a defaultDepartures modificandone le partenze sulla base
-         delle rimodulazioni */
+        String status = DeparturesWebParser.getStatus();
+        Log.i("DeparturesUtil","Letto status:\n" + status);
+        this.applyChanges(Parser.parseChanges(status));
+
+    }
+
+    public void applyChanges(Map<String, List<LocalTime>> changes) {
+        /* Si assume che i cambiamenti siano riferiti al giorno stesso */
+        String day = getDayType(LocalDateTime.now());
+
         for (String direction : Arrays.asList(NORTHBOUND, SOUTHBOUND)) {
 
             List<LocalTime> changeTimes = changes.get(direction);
             if (changeTimes.size() > 0) {
 
+                Collections.sort(changeTimes);
+                LocalTime first = changeTimes.get(0);
+                LocalTime last = changeTimes.get(changeTimes.size() - 1);
+
+                List<LocalTime> workingList = new ArrayList<>();
+                boolean appliedChanges = false;
+                for (LocalTime origDept : this.departuresMap.get(day).get(direction)) {
+                    if (origDept.compareTo(first) < 0) {
+                        workingList.add(origDept);
+                    } else if (origDept.compareTo(first) > 0 && origDept.compareTo(last) < 0) {
+                        if (!appliedChanges) {
+                            workingList.addAll(changeTimes);
+                            appliedChanges = true;
+                        }
+                    } else {
+                        workingList.add(origDept);
+                    }
+                }
+                this.departuresMap.get(day).put(direction, workingList);
+
                 this.hasChanges = true;
+
 
             }
 
@@ -179,9 +216,9 @@ public class DeparturesUtil {
         SpannableStringBuilder sb = new SpannableStringBuilder();
         int index;
         for (LocalTime dept : deptList) {
-            sb.append(", ").append(dept.format(hmf));
+            sb.append(", ").append(dept.format(HMF));
 
-            LocalTime lastDept = getLastDeparture(direction, LocalDateTime.now().with(dept));
+            LocalTime lastDept = getLastDeparture(direction, LocalDateTime.now().with(dept), DEFAULT);
             long delta = Duration.between(lastDept, dept).toMinutes();
             String sDelta = String.valueOf(delta) + "'";
             index = sb.length() + 3;
@@ -207,7 +244,7 @@ public class DeparturesUtil {
 
         SpannableStringBuilder sb = new SpannableStringBuilder();
 
-        sb.append(" ").append(dept.format(hmf));
+        sb.append(" ").append(dept.format(HMF));
         long delta = Duration.between(LocalTime.now(), dept).toMinutes();
         String sDelta = delta + "'";
         sb.append(" (fra ").append(sDelta).append(")");
@@ -230,10 +267,10 @@ public class DeparturesUtil {
         LocalDateTime now = LocalDateTime.now();
 
         for (String direction : Arrays.asList(SOUTHBOUND, NORTHBOUND)) {
-            LocalTime nextDept = this.getNextDeparture(direction, now);
+            LocalTime nextDept = this.getNextDeparture(direction, now, DEFAULT);
             Spannable sNextDept = formatNextDeparture(nextDept);
 
-            List<LocalTime> followingDepts = getNextNDepartures(direction, now.with(nextDept),2);
+            List<LocalTime> followingDepts = getNextNDepartures(direction, now.with(nextDept),2, DEFAULT);
             Spannable sFollowingDepts = formatFollowingDepartures(direction, followingDepts);
 
             content.put(direction, (Spanned) TextUtils.concat(

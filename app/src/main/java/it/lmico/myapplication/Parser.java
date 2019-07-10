@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
 import static it.lmico.myapplication.Constants.NORTHBOUND;
 import static it.lmico.myapplication.Constants.SOUTHBOUND;
 
-class Parser {
+public abstract class Parser {
 
     private static int countRegolare = 0;
     private static int countCifre = 0;
@@ -45,7 +45,7 @@ class Parser {
     private static Matcher mRegolareFirst;
     private static Matcher mRegolareLast;
 
-    static Map<String, List<LocalTime>> parseChanges(String s) {
+    public static Map<String, List<LocalTime>> parseChanges(String s) {
 
         Map<String, List<LocalTime>> result = new HashMap<>();
         result.put(NORTHBOUND, new ArrayList<LocalTime>());

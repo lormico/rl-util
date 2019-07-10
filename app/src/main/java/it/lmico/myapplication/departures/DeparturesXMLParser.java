@@ -13,11 +13,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class DeparturesXMLParser {
+public abstract class DeparturesXMLParser {
 
-    public static Map<String, Map<String, List<LocalTime>>> parseDepartures(XmlResourceParser departuresParser) {
+    public static DeparturesMap parseDepartures(XmlResourceParser departuresParser) {
 
-        HashMap<String, Map<String, List<LocalTime>>> outMap = new HashMap<>();
+        DeparturesMap outMap = new DeparturesMap();
         String tag = null;
         String text;
         String direction = null;
