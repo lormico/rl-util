@@ -19,10 +19,10 @@ public class DeparturesMap {
     public DeparturesMap() {
 
         this.departuresMap = new HashMap<>();
-        for (String day : Arrays.asList(WEEKDAY, SATURDAY, HOLIDAY)) {
-            departuresMap.put(day, new HashMap<String, List<LocalTime>>());
-            for (String direction : Arrays.asList(NORTHBOUND, SOUTHBOUND)) {
-                departuresMap.get(day).put(direction, new ArrayList<LocalTime>());
+        for (String direction : Arrays.asList(NORTHBOUND, SOUTHBOUND)) {
+            departuresMap.put(direction, new HashMap<String, List<LocalTime>>());
+            for (String day : Arrays.asList(WEEKDAY, SATURDAY, HOLIDAY)) {
+                departuresMap.get(direction).put(day, new ArrayList<LocalTime>());
             }
         }
     }

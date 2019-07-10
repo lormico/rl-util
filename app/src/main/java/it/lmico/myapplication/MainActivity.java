@@ -22,13 +22,11 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import it.lmico.myapplication.departures.DeparturesFormatter;
 import it.lmico.myapplication.departures.DeparturesUtil;
 
 import static it.lmico.myapplication.Constants.HMF;

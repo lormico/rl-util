@@ -15,7 +15,6 @@ import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -35,17 +34,21 @@ public class DeparturesUtil {
 
     public static final int DEFAULT = 0;
     public static final int CHANGED = 1;
-
-    public boolean hasChanges = false;
+    public static final List<String> DIRECTIONS = Arrays.asList(NORTHBOUND, SOUTHBOUND);
 
     private static DeparturesMap defaultDeparturesMap;
     private DeparturesMap departuresMap;
+
+    private Map<String, LocalTime> lastChangedDepartures;
 
     public DeparturesUtil(XmlResourceParser departuresParser) {
 
         Log.v("DeparturesUtil", "initializing");
         defaultDeparturesMap = DeparturesXMLParser.parseDepartures(departuresParser);
         this.departuresMap = defaultDeparturesMap.clone();
+        this.lastChangedDepartures = new HashMap<>();
+        this.lastChangedDepartures.put(NORTHBOUND, null);
+        this.lastChangedDepartures.put(SOUTHBOUND, null);
 
     }
 
@@ -172,7 +175,7 @@ public class DeparturesUtil {
         /* Si assume che i cambiamenti siano riferiti al giorno stesso */
         String day = getDayType(LocalDateTime.now());
 
-        for (String direction : Arrays.asList(NORTHBOUND, SOUTHBOUND)) {
+        for (String direction : DIRECTIONS) {
 
             List<LocalTime> changeTimes = changes.get(direction);
             if (changeTimes.size() > 0) {
@@ -183,7 +186,7 @@ public class DeparturesUtil {
 
                 List<LocalTime> workingList = new ArrayList<>();
                 boolean appliedChanges = false;
-                for (LocalTime origDept : this.departuresMap.get(day).get(direction)) {
+                for (LocalTime origDept : this.departuresMap.get(direction).get(day)) {
                     if (origDept.compareTo(first) < 0) {
                         workingList.add(origDept);
                     } else if (origDept.compareTo(first) > 0 && origDept.compareTo(last) < 0) {
@@ -195,9 +198,9 @@ public class DeparturesUtil {
                         workingList.add(origDept);
                     }
                 }
-                this.departuresMap.get(day).put(direction, workingList);
+                this.departuresMap.get(direction).put(day, workingList);
 
-                this.hasChanges = true;
+                this.lastChangedDepartures.put(direction, last);
 
 
             }
@@ -206,9 +209,15 @@ public class DeparturesUtil {
 
     }
 
-    public boolean isDepartureRegular(LocalDateTime dept) {
-        // TODO controllare che la partenza specificata sia presente nel defaultDepartures
-        return true;
+    public boolean hasChanges() {
+        boolean hasChanges = false;
+        for (String direction : DIRECTIONS) {
+            LocalTime last = this.lastChangedDepartures.get(direction);
+            if (last != null) {
+                hasChanges |= last.compareTo(LocalTime.now()) > 0;
+            }
+        }
+        return hasChanges;
     }
 
     public Spannable formatFollowingDepartures(String direction, List<LocalTime> deptList) {
@@ -266,7 +275,7 @@ public class DeparturesUtil {
         // Formatta le partenze immediate
         LocalDateTime now = LocalDateTime.now();
 
-        for (String direction : Arrays.asList(SOUTHBOUND, NORTHBOUND)) {
+        for (String direction : DIRECTIONS) {
             LocalTime nextDept = this.getNextDeparture(direction, now, DEFAULT);
             Spannable sNextDept = formatNextDeparture(nextDept);
 
