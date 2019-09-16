@@ -79,7 +79,8 @@ public class MainActivity extends Activity {
             }
         });
 
-        departuresUtil = new DeparturesUtil(getResources().getXml(R.xml.departures));
+        // TODO: parametrizzare la scelta del file xml delle partenze
+        departuresUtil = new DeparturesUtil(getResources().getXml(R.xml.departures_20w));
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
         mBroadcastReceiver = new BroadcastReceiver() {
