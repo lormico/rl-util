@@ -14,8 +14,12 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import java.time.LocalTime;
 import java.util.Timer;
 import java.util.TimerTask;
+
+import static com.github.lormico.rlutil.Constants.DEPARTURES_UPDATE_INTERVAL;
+import static com.github.lormico.rlutil.Constants.NOTIFICATION_UPDATE_INTERVAL;
 
 public class ForegroundService extends Service {
 
@@ -46,27 +50,37 @@ public class ForegroundService extends Service {
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                askUpdate();
+                askUpdate(MainActivity.UPDATE_DEPARTURES);
             }
-        }, 0, 5000);
-        // robe in background
+        }, 0, DEPARTURES_UPDATE_INTERVAL);
+
+        // Wait for the end of the current minute, then update every minute
+        askUpdate(MainActivity.UPDATE_NOTIFICATION_ONLY);
+        int delay = (60 - LocalTime.now().getSecond()) * 1000;
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                askUpdate(MainActivity.UPDATE_NOTIFICATION_ONLY);
+            }
+        }, delay, NOTIFICATION_UPDATE_INTERVAL);
 
         // stopSelf();
 
-        return START_NOT_STICKY;
+        return START_STICKY;
 
     }
 
-    public void askUpdate() {
-        Log.d("askUpdate", "sending broadcast...");
+    public void askUpdate(String extra) {
+        Log.d("askUpdate", "sending broadcast '" + extra + "'...");
         final Intent receiverIntent = new Intent(MainActivity.RECEIVER_INTENT);
-        receiverIntent.putExtra(MainActivity.RECEIVER_MESSAGE, MainActivity.UPDATE_DEPARTURES);
+        receiverIntent.putExtra(MainActivity.RECEIVER_MESSAGE, extra);
         LocalBroadcastManager.getInstance(this).sendBroadcast(receiverIntent);
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        timer.cancel();
     }
 
     @Nullable

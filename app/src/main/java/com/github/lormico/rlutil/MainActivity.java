@@ -48,6 +48,7 @@ public class MainActivity extends Activity {
     public static final String RECEIVER_INTENT = "RECEIVER_INTENT";
     public static final String RECEIVER_MESSAGE = "RECEIVER_MESSAGE";
     public static final String UPDATE_DEPARTURES = "UPDATE_DEPARTURES";
+    public static final String UPDATE_NOTIFICATION_ONLY = "UPDATE_NOTIFICATION_ONLY";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,7 +59,7 @@ public class MainActivity extends Activity {
         getBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                update();
+                updateDepartures();
             }
         });
 
@@ -88,9 +89,10 @@ public class MainActivity extends Activity {
             public void onReceive(Context context, Intent intent) {
                 Log.d("MainActivity","received broadcast!");
                 String message = intent.getStringExtra(RECEIVER_MESSAGE);
-                Log.d("MainActivity", "message: " + message);
+                Log.d("MainActivity", "requested: " + message);
                 switch (message) {
-                    case UPDATE_DEPARTURES: update();
+                    case UPDATE_DEPARTURES: updateDepartures();
+                    case UPDATE_NOTIFICATION_ONLY: updateNotification();
                 }
             }
         };
@@ -145,8 +147,8 @@ public class MainActivity extends Activity {
         for (int set : Arrays.asList(DEFAULT, CHANGED)) {
 
             for (String direction : Arrays.asList(NORTHBOUND, SOUTHBOUND)) {
-                List<LocalTime> lastDeptList = departuresUtil.getLastNDepartures(direction, LocalDateTime.now(), 2, DEFAULT);
-                List<LocalTime> nextDeptList = departuresUtil.getNextNDepartures(direction, LocalDateTime.now(), 3, DEFAULT);
+                List<LocalTime> lastDeptList = departuresUtil.getLastNDepartures(direction, LocalDateTime.now(), 2, set);
+                List<LocalTime> nextDeptList = departuresUtil.getNextNDepartures(direction, LocalDateTime.now(), 3, set);
 
                 Collections.sort(lastDeptList);
 
@@ -172,7 +174,7 @@ public class MainActivity extends Activity {
 
     }
 
-    public void update() {
+    public void updateDepartures() {
         new Thread(new Runnable() {
             @Override
             public void run() {
