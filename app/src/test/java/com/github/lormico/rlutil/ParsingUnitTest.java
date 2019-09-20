@@ -1,4 +1,4 @@
-package it.lmico.myapplication;
+package com.github.lormico.rlutil;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -6,14 +6,11 @@ import org.junit.Test;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-import static it.lmico.myapplication.Constants.NORTHBOUND;
-import static it.lmico.myapplication.Constants.SOUTHBOUND;
+import static com.github.lormico.rlutil.Constants.NORTHBOUND;
+import static com.github.lormico.rlutil.Constants.SOUTHBOUND;
 import static org.junit.Assert.*;
 
 /**

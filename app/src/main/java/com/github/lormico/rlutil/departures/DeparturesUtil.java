@@ -1,4 +1,4 @@
-package it.lmico.myapplication.departures;
+package com.github.lormico.rlutil.departures;
 
 import android.content.res.XmlResourceParser;
 import android.graphics.Color;
@@ -22,12 +22,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import it.lmico.myapplication.Parser;
+import com.github.lormico.rlutil.Parser;
 
-import static it.lmico.myapplication.Constants.HMF;
-import static it.lmico.myapplication.Constants.NORTHBOUND;
-import static it.lmico.myapplication.Constants.ONE_LINER;
-import static it.lmico.myapplication.Constants.SOUTHBOUND;
+import static com.github.lormico.rlutil.Constants.HMF;
+import static com.github.lormico.rlutil.Constants.NORTHBOUND;
+import static com.github.lormico.rlutil.Constants.ONE_LINER;
+import static com.github.lormico.rlutil.Constants.SOUTHBOUND;
 
 
 public class DeparturesUtil {

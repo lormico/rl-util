@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:configure="it.lmico.myapplication.NewAppWidgetConfigureActivity"
+    android:configure="com.github.lormico.rlutil.NewAppWidgetConfigureActivity"
     android:initialKeyguardLayout="@layout/new_app_widget"
     android:initialLayout="@layout/new_app_widget"
     android:minWidth="40dp"

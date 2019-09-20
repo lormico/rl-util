@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="it.lmico.myapplication">
+    package="com.github.lormico.rlutil">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -13,7 +13,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <receiver android:name=".NewAppWidget">
+        <receiver android:name="com.github.lormico.rlutil.NewAppWidget">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -23,12 +23,12 @@
                 android:resource="@xml/new_app_widget_info" />
         </receiver>
 
-        <activity android:name=".NewAppWidgetConfigureActivity">
+        <activity android:name="com.github.lormico.rlutil.NewAppWidgetConfigureActivity">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
         </activity>
-        <activity android:name=".MainActivity">
+        <activity android:name="com.github.lormico.rlutil.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -36,7 +36,7 @@
             </intent-filter>
         </activity>
         
-        <service android:name=".ForegroundService" android:enabled="true" android:exported="true" />
+        <service android:name="com.github.lormico.rlutil.ForegroundService" android:enabled="true" android:exported="true" />
     </application>
 
 </manifest>

@@ -1,4 +1,4 @@
-package it.lmico.myapplication;
+package com.github.lormico.rlutil;
 
 import android.app.Activity;
 import android.appwidget.AppWidgetManager;
@@ -14,7 +14,7 @@ import android.widget.EditText;
  */
 public class NewAppWidgetConfigureActivity extends Activity {
 
-    private static final String PREFS_NAME = "it.lmico.myapplication.NewAppWidget";
+    private static final String PREFS_NAME = "com.github.lormico.rlutil.NewAppWidget";
     private static final String PREF_PREFIX_KEY = "appwidget_";
     int mAppWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID;
     EditText mAppWidgetText;

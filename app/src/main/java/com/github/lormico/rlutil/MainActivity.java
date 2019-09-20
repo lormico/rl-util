@@ -1,4 +1,4 @@
-package it.lmico.myapplication;
+package com.github.lormico.rlutil;
 
 import android.app.Activity;
 import android.app.Notification;
@@ -27,14 +27,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import it.lmico.myapplication.departures.DeparturesUtil;
+import com.github.lormico.rlutil.departures.DeparturesUtil;
 
-import static it.lmico.myapplication.Constants.HMF;
-import static it.lmico.myapplication.Constants.NORTHBOUND;
-import static it.lmico.myapplication.Constants.ONE_LINER;
-import static it.lmico.myapplication.Constants.SOUTHBOUND;
-import static it.lmico.myapplication.departures.DeparturesUtil.CHANGED;
-import static it.lmico.myapplication.departures.DeparturesUtil.DEFAULT;
+import static com.github.lormico.rlutil.Constants.HMF;
+import static com.github.lormico.rlutil.Constants.NORTHBOUND;
+import static com.github.lormico.rlutil.Constants.ONE_LINER;
+import static com.github.lormico.rlutil.Constants.SOUTHBOUND;
+import static com.github.lormico.rlutil.departures.DeparturesUtil.CHANGED;
+import static com.github.lormico.rlutil.departures.DeparturesUtil.DEFAULT;
 
 public class MainActivity extends Activity {
 

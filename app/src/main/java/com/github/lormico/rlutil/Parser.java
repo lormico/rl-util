@@ -1,4 +1,4 @@
-package it.lmico.myapplication;
+package com.github.lormico.rlutil;
 
 import android.util.Log;
 
@@ -12,8 +12,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static it.lmico.myapplication.Constants.NORTHBOUND;
-import static it.lmico.myapplication.Constants.SOUTHBOUND;
+import static com.github.lormico.rlutil.Constants.NORTHBOUND;
+import static com.github.lormico.rlutil.Constants.SOUTHBOUND;
 
 public abstract class Parser {
 

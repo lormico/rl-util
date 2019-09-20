@@ -1,4 +1,4 @@
-package it.lmico.myapplication;
+package com.github.lormico.rlutil;
 
 import android.app.Notification;
 import android.app.NotificationChannel;

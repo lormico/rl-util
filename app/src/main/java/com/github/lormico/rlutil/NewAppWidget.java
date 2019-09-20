@@ -1,4 +1,4 @@
-package it.lmico.myapplication;
+package com.github.lormico.rlutil;
 
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
