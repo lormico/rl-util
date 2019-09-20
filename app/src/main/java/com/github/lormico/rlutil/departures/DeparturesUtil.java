@@ -27,6 +27,9 @@ import com.github.lormico.rlutil.Parser;
 import static com.github.lormico.rlutil.Constants.HMF;
 import static com.github.lormico.rlutil.Constants.NORTHBOUND;
 import static com.github.lormico.rlutil.Constants.ONE_LINER;
+import static com.github.lormico.rlutil.Constants.SERVICE_CHANGED;
+import static com.github.lormico.rlutil.Constants.SERVICE_OK;
+import static com.github.lormico.rlutil.Constants.SERVICE_STATUS;
 import static com.github.lormico.rlutil.Constants.SOUTHBOUND;
 
 
@@ -295,6 +298,14 @@ public class DeparturesUtil {
 //        content.put(NORTHBOUND, sbNorthbound);
 //        content.put(SOUTHBOUND, spannedSB);
         content.put(ONE_LINER, oneLiner);
+
+        Spannable serviceStatus;
+        if (this.hasChanges()) {
+            serviceStatus = new SpannableString(SERVICE_CHANGED);
+        } else {
+            serviceStatus = new SpannableString(SERVICE_OK);
+        }
+        content.put(SERVICE_STATUS, serviceStatus);
         return content;
     }
 }

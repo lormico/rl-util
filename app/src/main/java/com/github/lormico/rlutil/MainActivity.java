@@ -32,6 +32,9 @@ import com.github.lormico.rlutil.departures.DeparturesUtil;
 import static com.github.lormico.rlutil.Constants.HMF;
 import static com.github.lormico.rlutil.Constants.NORTHBOUND;
 import static com.github.lormico.rlutil.Constants.ONE_LINER;
+import static com.github.lormico.rlutil.Constants.SERVICE_CHANGED;
+import static com.github.lormico.rlutil.Constants.SERVICE_OK;
+import static com.github.lormico.rlutil.Constants.SERVICE_STATUS;
 import static com.github.lormico.rlutil.Constants.SOUTHBOUND;
 import static com.github.lormico.rlutil.departures.DeparturesUtil.CHANGED;
 import static com.github.lormico.rlutil.departures.DeparturesUtil.DEFAULT;
@@ -135,7 +138,7 @@ public class MainActivity extends Activity {
                 .setStyle(new NotificationCompat.InboxStyle()
                         .addLine(notificationContent.get(SOUTHBOUND))
                         .addLine(notificationContent.get(NORTHBOUND))
-                        .setBigContentTitle("Servizio regolare")
+                        .setBigContentTitle(notificationContent.get(SERVICE_STATUS))
                         .setSummaryText("Prossime partenze"))
                 .build();
         notificationManager.notify(1, notification);
@@ -165,6 +168,11 @@ public class MainActivity extends Activity {
 
         }
 
+        if (departuresUtil.hasChanges()) {
+            builder.append("\n\n" + SERVICE_CHANGED);
+        } else {
+            builder.append("\n\n" + SERVICE_OK);
+        }
         runOnUiThread(new Runnable() {
             @Override
             public void run() {

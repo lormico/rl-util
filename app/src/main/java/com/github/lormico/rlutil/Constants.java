@@ -20,4 +20,8 @@ public abstract class Constants {
 
     public static final DateTimeFormatter HMF = DateTimeFormatter.ofPattern("HH:mm");
 
+    // TODO: l18n
+    public static final String SERVICE_OK = "Servizio Regolare";
+    public static final String SERVICE_CHANGED = "Servizio Rimodulato";
+
 }
