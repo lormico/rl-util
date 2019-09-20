@@ -85,12 +85,23 @@ public class ParsingUnitTest {
 }
 
     @Test
-    public void noRegolare() {
+    public void onlyPSP() {
         partenzeRaw = "Prossime partenze da Porta San Paolo: 18.43-18.50-19.00";
         expectedPsp = Arrays.asList(
                 LocalTime.of(18,43),
                 LocalTime.of(18,50),
                 LocalTime.of(19,0));
+
+        test_expectations();
+    }
+
+
+    @Test
+    public void onlyColombo() {
+        partenzeRaw = "Prossime partenze da Colombo: 17.45-18.10";
+        expectedColombo = Arrays.asList(
+                LocalTime.of(17, 45),
+                LocalTime.of(18,10));
 
         test_expectations();
     }

@@ -28,7 +28,7 @@ public abstract class Parser {
     private static Pattern pOneNumericBlock = Pattern.compile("([\\D]*)(("+sTime+")+)([\\D])");
     private static Pattern pColomboGroup = Pattern.compile("(.*)(([c][a-z\\. ]*)?(colombo).*)", Pattern.CASE_INSENSITIVE);
     private static Pattern pColombo = Pattern.compile("colombo|ostia", Pattern.CASE_INSENSITIVE);
-    private static Pattern pPsp = Pattern.compile("[s]", Pattern.CASE_INSENSITIVE);
+    private static Pattern pPsp = Pattern.compile("paolo|psp|porta|roma", Pattern.CASE_INSENSITIVE);
     private static Pattern pTime = Pattern.compile(sTime);
 
     private static Matcher mRegolare;
@@ -45,6 +45,17 @@ public abstract class Parser {
     private static Matcher mRegolareFirst;
     private static Matcher mRegolareLast;
 
+    /**
+     * Parse the line status string and figure out the changes to the ordinary timetable.
+     *
+     * At first, it counts how many "time groups" there are in the string:
+     *      - none: there are no changes
+     *      - 1:    only the departures in one direction are changed
+     *      - 2:    both directions are affected by the changes
+     *
+     * @param   s   the string containing the line status
+     * @return      a direction - updated departures map
+     */
     public static Map<String, List<LocalTime>> parseChanges(String s) {
 
         Map<String, List<LocalTime>> result = new HashMap<>();
@@ -64,14 +75,17 @@ public abstract class Parser {
             if (foundTimeGroups.size() == 0) {
 
                 // non ci sono blocchi di orari
-                // testare che sia regolare
+                // TODO: testare che sia regolare
 
             } else if (foundTimeGroups.size() == 1) {
 
-                // trovato un solo blocco di orari
-                // posso avere tipo "partenze da psp regolari da colombo 10.30 10.40"
-                // oppure "partenze da psp 10.20 10.40"
+                /* Only one time group found, we can expect either:
+                 *  - "XXX regolare YYY [hh:mm]"
+                 *  - "XXX [hh:mm] YYY regolare"
+                 *  - "XXX [hh:mm]"
+                 */
 
+                // Get the text blocks before and after the time group
                 mat = Pattern.compile(
                         "(.*?)(" + foundTimeGroups.get(0) + ")(.*)").matcher(s);
 
@@ -81,8 +95,6 @@ public abstract class Parser {
                 } else {
                     throw new Exception("Impossibile estrarre testo prima e dopo i blocchi di orari per " + s);
                 }
-
-                // Controlla la struttura tipo "Partenze da XXX hh:mm hh:mm"
 
                 mPspFirst = pPsp.matcher(foundTextGroups.get(0));
                 mColomboFirst = pColombo.matcher(foundTextGroups.get(0));
@@ -104,12 +116,19 @@ public abstract class Parser {
                 boolean onlyColomboFirst = bColomboFirst && !bPspFirst;
 
                 if (noInfoInLast) {
-                    // tutte le informazioni sono concentrate nel primo blocco di testo
-                    // posso avere "XXX regolare YYY hh:mm"
-                    //      oppure "XXX hh:mm"
+                    /* The second text block contains no information:
+                     * concentrate on the first.
+                     *
+                     * Examples: "XXX regolare YYY [hh:mm]"
+                     *           "XXX [hh:mm]"
+                     */
 
                     if (noRegolareAtAll) {
-                        // "XXX hh:mm"
+                        /* The word "REGOLARE" is not present in the first block.
+                         *
+                         * Example: "Partenze da DDD [hh:mm]"
+                         */
+
                         if (onlyPspFirst) {
                             result.put(SOUTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
                         } else if (onlyColomboFirst) {
@@ -118,45 +137,56 @@ public abstract class Parser {
                             throw new Exception("AAAA");
                         }
                     } else {
-                        // Il blocco prima degli orari contiene "regolare"; a chi si riferisce?
-                        // "XXX regolare YYY hh:mm"
+                        /* The word "REGOLARE" is present in the first block.
+                         * We need to find out what direction it refers to.
+                         *
+                         * Example: "XXX regolare YYY [hh:mm]"
+                         */
                         handleOneRegolare(foundTextGroups.get(0), foundTimeGroups.get(0), result);
-
                     }
 
                 } else {
-                    // Ci sono informazioni sia prima che dopo il blocco di orari
-                    // XXX regolare YYY hh:mm ---- ESCLUSO A PRIORI
-                    // XXX hh:mm YYY regolare
-                    // XXX regolare YYY hh:mm poi regolare
+                    /* Both the first and the second text group contain information.
+                     *
+                     * Examples:    "XXX hh:mm YYY regolare"
+                     *              "XXX regolare YYY hh:mm poi regolare"
+                     */
 
-                    // Confermo che effettivamente regolare sia dopo
-                    //boolean onlyFirstRegolare = mRegolareFirst.find() && !mRegolareLast.find();
+                    // Check for "regolare" at the end of the text group
                     boolean onlyLastRegolare = !bRegolareFirst && bRegolareLast;
                     boolean twoRegolare = bRegolareFirst && bRegolareLast;
                     if (onlyLastRegolare) {
+                        // "regolare" only appears after the time group
+                        // Which direction does the time group refer to?
                         mPsp = pPsp.matcher(foundTextGroups.get(1));
                         mColombo = pColombo.matcher(foundTextGroups.get(1));
                         if (mPsp.find() && !mColombo.find()) {
-                            // "CC hh:mm PSP regolare"
+                            // "CC [hh:mm] PSP regolare"
                             result.put(NORTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
                         } else if (mColombo.find() && !mPsp.find()) {
-                            // "PSP hh:mm CC regolare"
+                            // "PSP [hh:mm] CC regolare"
                             result.put(SOUTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
                         }
                     } else if (twoRegolare) {
-                        // XXX regolare YYY hh:mm poi regolare
-                        // ignoro il secondo regolare, tratto come il caso regolare
-
+                        // We got "regolare" before and after the time group:
+                        //      "XXX regolare YYY [hh:mm] poi regolare"
+                        // we can ignore the second occurrence, and fall within the one "regolare" case
                         handleOneRegolare(foundTextGroups.get(0), foundTimeGroups.get(0), result);
                     } else {
+                        // Unexpected format
                         throw new Exception("Formato imprevisto per " + s);
                     }
                 }
 
             } else if (foundTimeGroups.size() == 2){
 
-                // doppia rimodulazione
+                /* Two time groups found, both directions are affected.
+                 * We can ignore any occurrence of "regolare".
+                 * The only expected structure is:
+                 *  - "XXX [hh:mm] YYY [hh:mm]"
+                 */
+
+                // Extract the two text groups before each time group
                 mat = Pattern.compile(
                         "(.*?)(" +
                         foundTimeGroups.get(0) + ")(.*?)(" +
@@ -170,21 +200,25 @@ public abstract class Parser {
                     throw new Exception("AAAA");
                 }
 
+                // Find out which direction the first text group refers to
                 mPsp = pPsp.matcher(foundTextGroups.get(0));
                 mColombo = pColombo.matcher(foundTextGroups.get(0));
 
                 if (mPsp.find() && !mColombo.find()) {
+                    // PSP [hh:mm] CC [hh:mm]
                     result.put(NORTHBOUND, getLocalTimesFromString(foundTimeGroups.get(1)));
                     result.put(SOUTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
                 } else if (!mPsp.find() && mColombo.find()) {
+                    // CC [hh:mm] PSP [hh:mm]
                     result.put(NORTHBOUND, getLocalTimesFromString(foundTimeGroups.get(0)));
                     result.put(SOUTHBOUND, getLocalTimesFromString(foundTimeGroups.get(1)));
                 } else {
+                    // Unexpected format
                     throw new Exception("AAAA");
                 }
 
             } else {
-                // più di 2 gruppi, errore
+                // More than 2 time groups, unexpected
                 throw new Exception("AAAA");
             }
 
@@ -197,8 +231,15 @@ public abstract class Parser {
         return result;
     }
 
-    /*
-        Funzione che gestisce il caso "XXX regolare YYY hh:mm"
+
+    /**
+     * Handle the phrase structure "XXX regolare YYY [hh:mm]"
+     *
+     * First it finds out which direction is XXX, then puts the YYY amended departures in the result map
+     *
+     * @param   textGroup   the string containing the text before the time group
+     * @param   timeGroup   the amended departures
+     * @param   result      the empty directions - updated departures map to populate
      */
     private static void handleOneRegolare(String textGroup, String timeGroup, Map<String, List<LocalTime>> result) throws Exception {
         Pattern pRegolareGroup = Pattern.compile("(.*?)(regolare)(.*)", Pattern.CASE_INSENSITIVE);
